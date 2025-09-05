@@ -1,0 +1,19 @@
+github:
+  token: "${GITHUB_TOKEN}"
+  api_base_url: "https://api.github.com"
+  
+aws:
+  region: "us-east-1"
+  bedrock_model: "anthropic.sonnet-3-5"
+  
+analysis:
+  file_extensions: [".py", ".js", ".java", ".go", ".rb", ".php", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".h", ".cs", ".sql", ".yaml", ".yml", ".json", ".xml", ".html", ".css"]
+  max_file_size: 1048576  # 1MB
+  batch_size: 10
+  
+risk_scoring:
+  weights:
+    vulnerability: 0.4
+    purpose: 0.3
+    exposure: 0.2
+    complexity: 0.1
