@@ -4,7 +4,7 @@ github:
   
 aws:
   region: "us-east-1"
-  bedrock_model: "anthropic.sonnet-3-5"
+  bedrock_model: "anthropic.claude-3-5-sonnet-20240620-v1:0"
   
 analysis:
   file_extensions: [".py", ".js", ".java", ".go", ".rb", ".php", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".h", ".cs", ".sql", ".yaml", ".yml", ".json", ".xml", ".html", ".css"]
