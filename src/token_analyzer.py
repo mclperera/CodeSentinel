@@ -48,18 +48,29 @@ class RepositoryTokenStats:
 class TokenAnalyzer:
     """Token analysis and cost estimation for LLM operations"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict, provider: str = None):
         """Initialize token analyzer"""
         self.config = config
+        self.provider = provider or config.get('llm', {}).get('default_provider', 'openai')
         
-        # Claude pricing (approximate, check AWS for current rates)
-        # Claude-3.5-Sonnet pricing on Bedrock (as of 2024)
-        self.pricing = {
-            'input_tokens_per_1k': 0.003,   # $3 per 1M input tokens
-            'output_tokens_per_1k': 0.015   # $15 per 1M output tokens
+        # Multi-provider pricing (as of 2024)
+        self.pricing_table = {
+            'openai': {
+                'model': 'gpt-4o-mini',
+                'input_tokens_per_1k': 0.00015,   # $0.15 per 1M input tokens
+                'output_tokens_per_1k': 0.0006    # $0.60 per 1M output tokens
+            },
+            'bedrock': {
+                'model': 'claude-3.5-sonnet',
+                'input_tokens_per_1k': 0.003,     # $3 per 1M input tokens
+                'output_tokens_per_1k': 0.015     # $15 per 1M output tokens
+            }
         }
         
-        # Initialize tiktoken encoder for Claude (use cl100k_base as approximation)
+        # Set pricing based on provider
+        self.pricing = self.pricing_table.get(self.provider, self.pricing_table['openai'])
+        
+        # Initialize tiktoken encoder
         try:
             self.encoder = tiktoken.get_encoding("cl100k_base")
         except Exception as e:
@@ -69,7 +80,7 @@ class TokenAnalyzer:
         # Analysis prompt template for token counting
         self.prompt_template = self._get_analysis_prompt_template()
         
-        logger.info("Token analyzer initialized successfully")
+        logger.info(f"Token analyzer initialized for {self.provider} provider successfully")
     
     def _get_analysis_prompt_template(self) -> str:
         """Get the prompt template used for analysis"""
@@ -106,6 +117,101 @@ Example response:
 
 Provide only the JSON response, no additional text."""
     
+    def get_cost_preview(self, manifest: Manifest, sample_size: int = 5) -> Dict:
+        """Get a cost preview by analyzing a sample of files"""
+        logger.info(f"Generating cost preview with sample size: {sample_size}")
+        
+        if not manifest.files:
+            return {
+                'estimated_total_cost': 0.0,
+                'total_files': 0,
+                'sample_analyzed': 0,
+                'provider': self.provider,
+                'model': self.pricing.get('model', 'unknown'),
+                'confidence': 'n/a'
+            }
+        
+        # Select a representative sample
+        sample_files = manifest.files[:min(sample_size, len(manifest.files))]
+        
+        total_estimated_tokens = 0
+        analyzed_count = 0
+        
+        try:
+            from github_analyzer import GitHubAnalyzer
+            github_analyzer = GitHubAnalyzer()
+            repo, _ = github_analyzer.get_repository_info(manifest.repository.url)
+            
+            for file_info in sample_files:
+                try:
+                    # Get file content
+                    content = github_analyzer.get_file_content(repo, file_info.blob_sha)
+                    
+                    # Skip very large files
+                    max_file_size = self.config.get('analysis', {}).get('max_file_size', 1048576)
+                    if len(content) > max_file_size:
+                        continue
+                    
+                    # Analyze tokens for this file
+                    stats = self.analyze_file_tokens(file_info, content)
+                    total_estimated_tokens += stats.total_tokens
+                    analyzed_count += 1
+                    
+                except Exception as e:
+                    logger.debug(f"Could not analyze sample file {file_info.path}: {str(e)}")
+                    continue
+            
+            if analyzed_count > 0:
+                # Calculate average tokens per file
+                avg_tokens = total_estimated_tokens / analyzed_count
+                
+                # Estimate total cost for all files
+                total_estimated_tokens_all = avg_tokens * len(manifest.files)
+                
+                # Calculate cost
+                input_cost = (total_estimated_tokens_all * 0.85 / 1000) * self.pricing['input_tokens_per_1k']  # 85% input
+                output_cost = (total_estimated_tokens_all * 0.15 / 1000) * self.pricing['output_tokens_per_1k']  # 15% output
+                estimated_total_cost = input_cost + output_cost
+                
+                confidence = "high" if analyzed_count >= 5 else "medium" if analyzed_count >= 2 else "low"
+                
+                return {
+                    'estimated_total_cost': estimated_total_cost,
+                    'total_files': len(manifest.files),
+                    'sample_analyzed': analyzed_count,
+                    'avg_tokens_per_file': avg_tokens,
+                    'estimated_total_tokens': total_estimated_tokens_all,
+                    'provider': self.provider,
+                    'model': self.pricing.get('model', 'unknown'),
+                    'confidence': confidence,
+                    'pricing': {
+                        'input_per_1k': self.pricing['input_tokens_per_1k'],
+                        'output_per_1k': self.pricing['output_tokens_per_1k']
+                    }
+                }
+            else:
+                return {
+                    'estimated_total_cost': 0.0,
+                    'total_files': len(manifest.files),
+                    'sample_analyzed': 0,
+                    'provider': self.provider,
+                    'model': self.pricing.get('model', 'unknown'),
+                    'confidence': 'no-data',
+                    'error': 'Could not analyze any sample files'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error during cost preview: {str(e)}")
+            return {
+                'estimated_total_cost': 0.0,
+                'total_files': len(manifest.files),
+                'sample_analyzed': 0,
+                'provider': self.provider,
+                'model': self.pricing.get('model', 'unknown'),
+                'confidence': 'error',
+                'error': str(e)
+            }
+
     def count_tokens(self, text: str) -> int:
         """Count tokens in text using tiktoken"""
         if not self.encoder:
@@ -229,14 +335,16 @@ Provide only the JSON response, no additional text."""
             "repository_stats": asdict(repo_stats),
             "file_stats": [asdict(stats) for stats in file_stats],
             "pricing_info": {
-                "model": "claude-3.5-sonnet",
+                "provider": self.provider,
+                "model": self.pricing.get('model', 'unknown'),
                 "input_price_per_1k_tokens": self.pricing['input_tokens_per_1k'],
                 "output_price_per_1k_tokens": self.pricing['output_tokens_per_1k'],
                 "currency": "USD"
             },
             "analysis_metadata": {
                 "encoder": "cl100k_base (tiktoken)",
-                "note": "Costs are estimates based on AWS Bedrock pricing"
+                "provider": self.provider,
+                "note": f"Costs are estimates based on {self.provider} pricing"
             }
         }
         

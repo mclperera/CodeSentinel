@@ -40,7 +40,9 @@ def cli():
 @click.option('--aws-profile', default='bedrock-dev', help='AWS profile for Bedrock access')
 @click.option('--provider', type=click.Choice(['openai', 'bedrock']), default=None, 
               help='LLM provider for Phase 2.5 (defaults to config setting)')
-def analyze(repository_url, output, config, phase, aws_profile, provider):
+@click.option('--skip-cost-preview', is_flag=True, default=False,
+              help='Skip cost preview and consent prompt for automated usage')
+def analyze(repository_url, output, config, phase, aws_profile, provider, skip_cost_preview):
     """Analyze a GitHub repository and generate a manifest"""
     click.echo(f"🔍 Analyzing repository: {repository_url} (Phase {phase})")
     
@@ -65,8 +67,9 @@ def analyze(repository_url, output, config, phase, aws_profile, provider):
         
         if phase == '1.5':
             # Token analysis (Phase 1.5)
-            click.echo("🔢 Performing token analysis...")
-            token_analyzer = TokenAnalyzer(config_data)
+            provider_name = provider or config_data.get('llm', {}).get('default_provider', 'openai')
+            click.echo(f"🔢 Performing token analysis using {provider_name.upper()} pricing...")
+            token_analyzer = TokenAnalyzer(config_data, provider=provider_name)
             file_stats, repo_stats = token_analyzer.analyze_repository_tokens(manifest, analyzer)
             
             # Save token analysis
@@ -83,9 +86,70 @@ def analyze(repository_url, output, config, phase, aws_profile, provider):
             click.echo("✨ Bedrock LLM analysis complete!")
             
         elif phase == '2.5':
-            # Multi-provider LLM analysis (Phase 2.5)
+            # Multi-provider LLM analysis (Phase 2.5) with cost preview and consent
             provider_name = provider or config_data.get('llm', {}).get('default_provider', 'openai')
-            click.echo(f"🧠 Enhancing with multi-provider LLM analysis using {provider_name.upper()}...")
+            
+            if not skip_cost_preview:
+                # Initialize token analyzer for cost preview
+                from src.token_analyzer import TokenAnalyzer
+                token_analyzer = TokenAnalyzer(config_data, provider=provider_name)
+                
+                # Get cost preview
+                click.echo(f"🔍 Analyzing cost preview for {provider_name.upper()} provider...")
+                cost_preview = token_analyzer.get_cost_preview(manifest, sample_size=5)
+                
+                # Display cost preview
+                click.echo(f"\n💰 Cost Preview for LLM Analysis:")
+                click.echo(f"📁 Total files to analyze: {cost_preview['total_files']}")
+                click.echo(f"🔬 Sample analyzed: {cost_preview['sample_analyzed']} files")
+                click.echo(f"🤖 Provider: {cost_preview['provider'].upper()}")
+                click.echo(f"🧠 Model: {cost_preview['model']}")
+                
+                if cost_preview.get('error'):
+                    click.echo(f"⚠️  Warning: {cost_preview['error']}")
+                    if cost_preview['confidence'] == 'error':
+                        click.echo("❌ Cannot proceed without cost estimation")
+                        return
+                
+                if cost_preview['estimated_total_cost'] > 0:
+                    click.echo(f"💵 Estimated cost: ${cost_preview['estimated_total_cost']:.4f} USD")
+                    click.echo(f"📊 Average tokens per file: {cost_preview.get('avg_tokens_per_file', 0):.0f}")
+                    click.echo(f"🎯 Total estimated tokens: {cost_preview.get('estimated_total_tokens', 0):,.0f}")
+                    click.echo(f"📈 Confidence level: {cost_preview['confidence']}")
+                    
+                    # Show pricing breakdown
+                    pricing = cost_preview.get('pricing', {})
+                    if pricing:
+                        click.echo(f"\n💸 Pricing Details:")
+                        click.echo(f"   Input tokens: ${pricing.get('input_per_1k', 0):.6f} per 1K tokens")
+                        click.echo(f"   Output tokens: ${pricing.get('output_per_1k', 0):.6f} per 1K tokens")
+                    
+                    # Cost threshold warnings
+                    if cost_preview['estimated_total_cost'] > 1.0:
+                        click.echo(f"\n⚠️  HIGH COST WARNING: Estimated cost exceeds $1.00")
+                    elif cost_preview['estimated_total_cost'] > 0.10:
+                        click.echo(f"\n⚠️  Cost notice: Estimated cost exceeds $0.10")
+                    
+                    # Get user consent
+                    click.echo(f"\n❓ Do you want to proceed with the analysis?")
+                    consent = click.confirm("Continue with LLM analysis?", default=False)
+                    
+                    if not consent:
+                        click.echo("❌ Analysis cancelled by user")
+                        click.echo(f"💡 Tip: You can run 'python cli.py analyze {repository_url} --phase 1' for free basic analysis")
+                        return
+                    
+                    click.echo("✅ User consent confirmed, proceeding with analysis...")
+                else:
+                    click.echo("ℹ️  No cost estimated (possibly no supported files found)")
+                    consent = click.confirm("Continue anyway?", default=True)
+                    if not consent:
+                        click.echo("❌ Analysis cancelled by user")
+                        return
+            else:
+                click.echo(f"⏭️  Skipping cost preview (--skip-cost-preview flag used)")
+            
+            click.echo(f"\n🧠 Enhancing with multi-provider LLM analysis using {provider_name.upper()}...")
             
             from src.multi_llm_analyzer import MultiProviderLLMAnalyzer
             llm_analyzer = MultiProviderLLMAnalyzer(config_data, provider=provider)
@@ -143,6 +207,86 @@ def analyze(repository_url, output, config, phase, aws_profile, provider):
     except Exception as e:
         click.echo(f"❌ Error: {str(e)}", err=True)
         sys.exit(1)
+
+
+@cli.command()
+@click.argument('repository_url')
+@click.option('--config', '-c', default='config.yaml', help='Configuration file path')
+@click.option('--provider', type=click.Choice(['openai', 'bedrock']), default=None, 
+              help='LLM provider to estimate costs for (defaults to config setting)')
+@click.option('--sample-size', '-s', default=5, help='Number of files to sample for cost estimation')
+def cost_preview(repository_url, config, provider, sample_size):
+    """Preview estimated costs for LLM analysis without running it"""
+    try:
+        # Load configuration
+        with open(config, 'r') as f:
+            config_data = yaml.safe_load(f)
+        
+        provider_name = provider or config_data.get('llm', {}).get('default_provider', 'openai')
+        
+        click.echo(f"💰 Generating cost preview for: {repository_url}")
+        click.echo(f"🤖 Provider: {provider_name.upper()}")
+        
+        # Initialize GitHub analyzer and generate basic manifest
+        analyzer = GitHubAnalyzer(config_path=config)
+        click.echo("📋 Generating file inventory...")
+        manifest = analyzer.generate_manifest(repository_url)
+        
+        # Initialize token analyzer
+        from src.token_analyzer import TokenAnalyzer
+        token_analyzer = TokenAnalyzer(config_data, provider=provider_name)
+        
+        # Get cost preview
+        click.echo(f"🔍 Analyzing sample of {sample_size} files...")
+        cost_preview = token_analyzer.get_cost_preview(manifest, sample_size=sample_size)
+        
+        # Display detailed cost preview
+        click.echo(f"\n📊 Cost Analysis Results:")
+        click.echo(f"🏛️  Repository: {manifest.repository.url}")
+        click.echo(f"📁 Total files found: {cost_preview['total_files']}")
+        click.echo(f"🔬 Sample analyzed: {cost_preview['sample_analyzed']} files")
+        click.echo(f"🤖 Provider: {cost_preview['provider'].upper()}")
+        click.echo(f"🧠 Model: {cost_preview['model']}")
+        
+        if cost_preview.get('error'):
+            click.echo(f"⚠️  Error: {cost_preview['error']}")
+            return
+        
+        if cost_preview['estimated_total_cost'] > 0:
+            click.echo(f"\n💵 Cost Estimation:")
+            click.echo(f"   Estimated total: ${cost_preview['estimated_total_cost']:.4f} USD")
+            click.echo(f"   Cost per file: ${cost_preview['estimated_total_cost']/cost_preview['total_files']:.4f} USD")
+            click.echo(f"📊 Token Estimation:")
+            click.echo(f"   Average per file: {cost_preview.get('avg_tokens_per_file', 0):.0f} tokens")
+            click.echo(f"   Total estimated: {cost_preview.get('estimated_total_tokens', 0):,.0f} tokens")
+            click.echo(f"📈 Confidence: {cost_preview['confidence']}")
+            
+            # Show pricing details
+            pricing = cost_preview.get('pricing', {})
+            if pricing:
+                click.echo(f"\n💸 Pricing Structure:")
+                click.echo(f"   Input: ${pricing.get('input_per_1k', 0)*1000:.3f} per 1M tokens")
+                click.echo(f"   Output: ${pricing.get('output_per_1k', 0)*1000:.3f} per 1M tokens")
+            
+            # Cost categories
+            if cost_preview['estimated_total_cost'] > 5.0:
+                click.echo(f"\n🚨 VERY HIGH COST: Consider using --provider openai for lower costs")
+            elif cost_preview['estimated_total_cost'] > 1.0:
+                click.echo(f"\n⚠️  HIGH COST: Review if analysis is necessary")
+            elif cost_preview['estimated_total_cost'] > 0.10:
+                click.echo(f"\n⚠️  Moderate cost: Proceed with caution")
+            else:
+                click.echo(f"\n✅ Low cost: Safe to proceed")
+                
+            # Provide run command
+            click.echo(f"\n🚀 To run the analysis:")
+            click.echo(f"   python cli.py analyze {repository_url} --phase 2.5 --provider {provider_name}")
+            
+        else:
+            click.echo(f"\nℹ️  No costs estimated (no supported files found or analysis error)")
+        
+    except Exception as e:
+        click.echo(f"❌ Error generating cost preview: {str(e)}")
 
 
 @cli.command()
@@ -356,7 +500,9 @@ def get_file(repository_url, file_path, output):
 @click.argument('manifest_path')
 @click.option('--output', '-o', default=None, help='Output token analysis file path (defaults to config default)')
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
-def analyze_tokens(manifest_path, output, config):
+@click.option('--provider', type=click.Choice(['openai', 'bedrock']), default=None, 
+              help='LLM provider for cost calculation (defaults to config setting)')
+def analyze_tokens(manifest_path, output, config, provider):
     """Analyze token usage and cost estimation for a manifest (Phase 1.5)"""
     click.echo(f"🔢 Analyzing token usage from: {manifest_path}")
     
@@ -364,6 +510,9 @@ def analyze_tokens(manifest_path, output, config):
         # Load configuration
         with open(config, 'r') as f:
             config_data = yaml.safe_load(f)
+        
+        provider_name = provider or config_data.get('llm', {}).get('default_provider', 'openai')
+        click.echo(f"🤖 Using pricing for: {provider_name.upper()}")
         
         # Set default output path if not provided
         if output is None:
@@ -374,7 +523,7 @@ def analyze_tokens(manifest_path, output, config):
         
         # Initialize analyzers
         github_analyzer = GitHubAnalyzer()
-        token_analyzer = TokenAnalyzer(config_data)
+        token_analyzer = TokenAnalyzer(config_data, provider=provider_name)
         
         # Load manifest
         manifest = github_analyzer.load_manifest(manifest_path)
