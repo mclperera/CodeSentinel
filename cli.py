@@ -15,12 +15,18 @@ sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
 from github_analyzer import GitHubAnalyzer
 from llm_analyzer import LLMAnalyzer
+from token_analyzer import TokenAnalyzer
 
 
 @click.group()
 @click.version_option(version='1.0.0')
 def cli():
-    """CodeSentinel - GitHub Repository Risk Analysis Tool"""
+    """CodeSentinel - GitHub Repository Risk Analysis Tool
+    
+    Phase 1: Basic repository analysis and file inventory
+    Phase 1.5: Token analysis and cost estimation  
+    Phase 2: LLM-enhanced code understanding
+    """
     pass
 
 
@@ -28,8 +34,8 @@ def cli():
 @click.argument('repository_url')
 @click.option('--output', '-o', default='manifest.json', help='Output manifest file path')
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
-@click.option('--phase', '-p', type=click.Choice(['1', '2']), default='1', 
-              help='Analysis phase: 1=Basic analysis, 2=LLM-enhanced analysis')
+@click.option('--phase', '-p', type=click.Choice(['1', '1.5', '2']), default='1', 
+              help='Analysis phase: 1=Basic analysis, 1.5=Token analysis, 2=LLM-enhanced analysis')
 @click.option('--aws-profile', default='bedrock-dev', help='AWS profile for Bedrock access (Phase 2 only)')
 def analyze(repository_url, output, config, phase, aws_profile):
     """Analyze a GitHub repository and generate a manifest"""
@@ -47,7 +53,19 @@ def analyze(repository_url, output, config, phase, aws_profile):
         click.echo("📋 Generating base manifest...")
         manifest = analyzer.generate_manifest(repository_url)
         
-        if phase == '2':
+        if phase == '1.5':
+            # Token analysis (Phase 1.5)
+            click.echo("🔢 Performing token analysis...")
+            token_analyzer = TokenAnalyzer(config_data)
+            file_stats, repo_stats = token_analyzer.analyze_repository_tokens(manifest, analyzer)
+            
+            # Save token analysis
+            token_output = output.replace('.json', '_tokens.json')
+            token_analyzer.save_token_analysis(file_stats, repo_stats, token_output)
+            token_analyzer.print_token_summary(repo_stats)
+            click.echo(f"📊 Token analysis saved to: {token_output}")
+            
+        elif phase == '2':
             # Enhance with LLM analysis (Phase 2)
             click.echo("🧠 Enhancing with LLM analysis...")
             llm_analyzer = LLMAnalyzer(config_data, aws_profile=aws_profile)
@@ -234,6 +252,44 @@ def get_file(repository_url, file_path, output):
             click.echo(f"❌ File not found: {file_path}", err=True)
             sys.exit(1)
             
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@click.argument('manifest_path')
+@click.option('--output', '-o', default='token_analysis.json', help='Output token analysis file path')
+@click.option('--config', '-c', default='config.yaml', help='Configuration file path')
+def analyze_tokens(manifest_path, output, config):
+    """Analyze token usage and cost estimation for a manifest (Phase 1.5)"""
+    click.echo(f"🔢 Analyzing token usage from: {manifest_path}")
+    
+    try:
+        # Load configuration
+        with open(config, 'r') as f:
+            config_data = yaml.safe_load(f)
+        
+        # Initialize analyzers
+        github_analyzer = GitHubAnalyzer()
+        token_analyzer = TokenAnalyzer(config_data)
+        
+        # Load manifest
+        manifest = github_analyzer.load_manifest(manifest_path)
+        
+        # Perform token analysis
+        click.echo("🔍 Calculating tokens and costs...")
+        file_stats, repo_stats = token_analyzer.analyze_repository_tokens(manifest, github_analyzer)
+        
+        # Save token analysis
+        token_analyzer.save_token_analysis(file_stats, repo_stats, output)
+        
+        # Display summary
+        token_analyzer.print_token_summary(repo_stats)
+        
+        click.echo(f"\n✅ Token analysis complete!")
+        click.echo(f"📊 Analysis saved to: {output}")
+        
     except Exception as e:
         click.echo(f"❌ Error: {str(e)}", err=True)
         sys.exit(1)
