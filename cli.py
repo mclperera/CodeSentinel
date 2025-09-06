@@ -25,7 +25,8 @@ def cli():
     
     Phase 1: Basic repository analysis and file inventory
     Phase 1.5: Token analysis and cost estimation  
-    Phase 2: LLM-enhanced code understanding
+    Phase 2: LLM-enhanced code understanding (Bedrock only)
+    Phase 2.5: Multi-provider LLM analysis (OpenAI + Bedrock)
     """
     pass
 
@@ -34,10 +35,12 @@ def cli():
 @click.argument('repository_url')
 @click.option('--output', '-o', default='manifest.json', help='Output manifest file path')
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
-@click.option('--phase', '-p', type=click.Choice(['1', '1.5', '2']), default='1', 
-              help='Analysis phase: 1=Basic analysis, 1.5=Token analysis, 2=LLM-enhanced analysis')
-@click.option('--aws-profile', default='bedrock-dev', help='AWS profile for Bedrock access (Phase 2 only)')
-def analyze(repository_url, output, config, phase, aws_profile):
+@click.option('--phase', '-p', type=click.Choice(['1', '1.5', '2', '2.5']), default='1', 
+              help='Analysis phase: 1=Basic analysis, 1.5=Token analysis, 2=LLM (Bedrock), 2.5=Multi-provider LLM')
+@click.option('--aws-profile', default='bedrock-dev', help='AWS profile for Bedrock access')
+@click.option('--provider', type=click.Choice(['openai', 'bedrock']), default=None, 
+              help='LLM provider for Phase 2.5 (defaults to config setting)')
+def analyze(repository_url, output, config, phase, aws_profile, provider):
     """Analyze a GitHub repository and generate a manifest"""
     click.echo(f"🔍 Analyzing repository: {repository_url} (Phase {phase})")
     
@@ -66,11 +69,27 @@ def analyze(repository_url, output, config, phase, aws_profile):
             click.echo(f"📊 Token analysis saved to: {token_output}")
             
         elif phase == '2':
-            # Enhance with LLM analysis (Phase 2)
-            click.echo("🧠 Enhancing with LLM analysis...")
+            # Original Bedrock-only LLM analysis (Phase 2)
+            click.echo("🧠 Enhancing with Bedrock LLM analysis...")
             llm_analyzer = LLMAnalyzer(config_data, aws_profile=aws_profile)
             manifest = llm_analyzer.enrich_manifest_with_llm_analysis(manifest, analyzer)
-            click.echo("✨ LLM analysis complete!")
+            click.echo("✨ Bedrock LLM analysis complete!")
+            
+        elif phase == '2.5':
+            # Multi-provider LLM analysis (Phase 2.5)
+            provider_name = provider or config_data.get('llm', {}).get('default_provider', 'openai')
+            click.echo(f"🧠 Enhancing with multi-provider LLM analysis using {provider_name.upper()}...")
+            
+            from src.multi_llm_analyzer import MultiProviderLLMAnalyzer
+            llm_analyzer = MultiProviderLLMAnalyzer(config_data, provider=provider)
+            
+            # Test connection first
+            if not llm_analyzer.test_connection():
+                click.echo(f"❌ Failed to connect to {provider_name.upper()} provider")
+                return
+            
+            manifest = llm_analyzer.enrich_manifest_with_llm_analysis(manifest, analyzer)
+            click.echo(f"✨ Multi-provider LLM analysis complete using {provider_name.upper()}!")
         
         # Save manifest
         analyzer.save_manifest(manifest, output)
@@ -184,25 +203,93 @@ def show(manifest_path):
 
 
 @cli.command()
-@click.option('--aws-profile', default='bedrock-dev', help='AWS profile for Bedrock access')
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
-def test_llm(aws_profile, config):
-    """Test AWS Bedrock LLM connection"""
+@click.option('--provider', type=click.Choice(['openai', 'bedrock']), default=None, 
+              help='LLM provider to test (defaults to config setting)')
+def test_llm(config, provider):
+    """Test multi-provider LLM connection and analysis"""
     try:
         # Load configuration
         with open(config, 'r') as f:
             config_data = yaml.safe_load(f)
         
-        click.echo("🧠 Testing LLM connection...")
+        from src.multi_llm_analyzer import MultiProviderLLMAnalyzer
+        
+        # If no provider specified, test both
+        providers_to_test = [provider] if provider else ['openai', 'bedrock']
+        
+        for test_provider in providers_to_test:
+            try:
+                click.echo(f"\n🧠 Testing {test_provider.upper()} LLM provider...")
+                
+                # Initialize analyzer
+                llm_analyzer = MultiProviderLLMAnalyzer(config_data, provider=test_provider)
+                
+                # Test connection
+                if llm_analyzer.test_connection():
+                    click.echo(f"✅ {test_provider.upper()} connection successful!")
+                    
+                    # Test simple analysis
+                    from src.github_analyzer import FileInfo
+                    test_file = FileInfo(
+                        path="test.py",
+                        blob_sha="test",
+                        size=100,
+                        extension=".py"
+                    )
+                    
+                    test_content = """
+def hello_world():
+    print("Hello, World!")
+    return "success"
+
+if __name__ == "__main__":
+    hello_world()
+"""
+                    
+                    click.echo(f"🔍 Testing file analysis with {test_provider.upper()}...")
+                    response = llm_analyzer.analyze_file_purpose(test_file, test_content)
+                    
+                    click.echo(f"📋 Analysis Result:")
+                    click.echo(f"   Purpose: {response.purpose}")
+                    click.echo(f"   Category: {response.category}")
+                    click.echo(f"   Confidence: {response.confidence:.2f}")
+                    click.echo(f"   Security: {response.security_relevance}")
+                    click.echo(f"   Provider: {response.provider}")
+                    click.echo(f"   Model: {response.model}")
+                    
+                else:
+                    click.echo(f"❌ {test_provider.upper()} connection failed!")
+                    
+            except Exception as e:
+                click.echo(f"❌ {test_provider.upper()} test failed: {str(e)}")
+        
+    except FileNotFoundError:
+        click.echo(f"❌ Configuration file not found: {config}")
+    except Exception as e:
+        click.echo(f"❌ Test failed: {str(e)}")
+
+
+@cli.command()
+@click.option('--aws-profile', default='bedrock-dev', help='AWS profile for Bedrock access')
+@click.option('--config', '-c', default='config.yaml', help='Configuration file path')
+def test_bedrock(aws_profile, config):
+    """Test AWS Bedrock LLM connection (legacy command)"""
+    try:
+        # Load configuration
+        with open(config, 'r') as f:
+            config_data = yaml.safe_load(f)
+        
+        click.echo("🧠 Testing Bedrock LLM connection...")
         llm_analyzer = LLMAnalyzer(config_data, aws_profile=aws_profile)
         
-        click.echo("✅ LLM connection successful!")
+        click.echo("✅ Bedrock LLM connection successful!")
         click.echo(f"🏗️  AWS Profile: {aws_profile}")
         click.echo(f"🌍 Region: {llm_analyzer.region}")
         click.echo(f"🤖 Model: {llm_analyzer.model_id}")
         
     except Exception as e:
-        click.echo(f"❌ LLM connection failed: {str(e)}", err=True)
+        click.echo(f"❌ Bedrock LLM connection failed: {str(e)}", err=True)
         sys.exit(1)
 @cli.command()
 def test_connection():

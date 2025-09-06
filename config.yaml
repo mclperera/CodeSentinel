@@ -2,10 +2,25 @@ github:
   token: "${GITHUB_TOKEN}"
   api_base_url: "https://api.github.com"
   
-aws:
-  region: "us-east-1"
-  bedrock_model: "anthropic.claude-3-5-sonnet-20240620-v1:0"
+llm:
+  # Default provider (openai or bedrock)
+  default_provider: "openai"
   
+  # OpenAI Configuration
+  openai:
+    api_key: "${OPENAPI_KEY}"
+    model: "gpt-4o-mini"  # Cost-effective and capable
+    max_tokens: 1000
+    temperature: 0.1
+    
+  # AWS Bedrock Configuration  
+  bedrock:
+    region: "us-east-1"
+    model: "anthropic.claude-3-5-sonnet-20240620-v1:0"
+    max_tokens: 1000
+    temperature: 0.1
+    aws_profile: "bedrock-dev"
+
 analysis:
   file_extensions: [".py", ".js", ".java", ".go", ".rb", ".php", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".h", ".cs", ".sql", ".yaml", ".yml", ".json", ".xml", ".html", ".css"]
   max_file_size: 1048576  # 1MB
