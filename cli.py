@@ -33,7 +33,7 @@ def cli():
 
 @cli.command()
 @click.argument('repository_url')
-@click.option('--output', '-o', default='manifest.json', help='Output manifest file path')
+@click.option('--output', '-o', default=None, help='Output manifest file path (defaults to config default)')
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
 @click.option('--phase', '-p', type=click.Choice(['1', '1.5', '2', '2.5']), default='1', 
               help='Analysis phase: 1=Basic analysis, 1.5=Token analysis, 2=LLM (Bedrock), 2.5=Multi-provider LLM')
@@ -48,6 +48,13 @@ def analyze(repository_url, output, config, phase, aws_profile, provider):
         # Load configuration
         with open(config, 'r') as f:
             config_data = yaml.safe_load(f)
+        
+        # Set default output path if not provided
+        if output is None:
+            output_config = config_data.get('output', {})
+            default_dir = output_config.get('default_dir', '.')
+            default_filename = output_config.get('manifest', 'manifest.json')
+            output = os.path.join(default_dir, default_filename)
         
         # Initialize GitHub analyzer
         analyzer = GitHubAnalyzer(config_path=config)
@@ -347,7 +354,7 @@ def get_file(repository_url, file_path, output):
 
 @cli.command()
 @click.argument('manifest_path')
-@click.option('--output', '-o', default='token_analysis.json', help='Output token analysis file path')
+@click.option('--output', '-o', default=None, help='Output token analysis file path (defaults to config default)')
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
 def analyze_tokens(manifest_path, output, config):
     """Analyze token usage and cost estimation for a manifest (Phase 1.5)"""
@@ -357,6 +364,13 @@ def analyze_tokens(manifest_path, output, config):
         # Load configuration
         with open(config, 'r') as f:
             config_data = yaml.safe_load(f)
+        
+        # Set default output path if not provided
+        if output is None:
+            output_config = config_data.get('output', {})
+            default_dir = output_config.get('default_dir', '.')
+            default_filename = output_config.get('token_analysis', 'token_analysis.json')
+            output = os.path.join(default_dir, default_filename)
         
         # Initialize analyzers
         github_analyzer = GitHubAnalyzer()

@@ -265,17 +265,28 @@ class GitHubAnalyzer:
 
 def main():
     """Main function for testing"""
-    analyzer = GitHubAnalyzer()
+    config_path = "config.yaml"
+    analyzer = GitHubAnalyzer(config_path=config_path)
     
     # Example usage
     repo_url = "https://github.com/octocat/Hello-World"
     
     try:
+        # Load configuration to get output paths
+        import yaml
+        with open(config_path, 'r') as f:
+            config_data = yaml.safe_load(f)
+        
+        output_config = config_data.get('output', {})
+        test_data_dir = output_config.get('test_data_dir', 'tests/data')
+        
         # Generate manifest
         manifest = analyzer.generate_manifest(repo_url)
         
-        # Save manifest
-        output_path = "manifest_phase1.json"
+        # Save manifest to test data directory
+        import os
+        os.makedirs(test_data_dir, exist_ok=True)
+        output_path = f"{test_data_dir}/manifest_phase1.json"
         analyzer.save_manifest(manifest, output_path)
         
         print(f"Phase 1 complete! Manifest saved to {output_path}")

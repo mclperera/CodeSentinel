@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 # Add src directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 def test_phase1():
     """Test Phase 1 functionality"""
@@ -50,9 +50,11 @@ def test_phase1():
                 if i >= 4:  # Show max 5 files
                     break
         
-        # Save test manifest
+        # Save test manifest to tests/data directory
         print("\n4. Saving manifest...")
-        output_path = "test_manifest_phase1.json"
+        import os
+        os.makedirs("tests/data", exist_ok=True)
+        output_path = "tests/data/test_manifest_phase1.json"
         analyzer.save_manifest(manifest, output_path)
         print(f"✅ Manifest saved to: {output_path}")
         

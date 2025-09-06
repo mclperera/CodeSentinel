@@ -44,14 +44,14 @@ Located in [`../tests/`](../tests/):
 
 ### Core Commands
 ```bash
-# Analyze a repository with OpenAI
+# Analyze a repository with OpenAI (saves to analysis-results/)
 python cli.py analyze --phase 2.5 --provider openai --output result.json https://github.com/owner/repo
 
-# Analyze with AWS Bedrock
+# Analyze with AWS Bedrock (saves to analysis-results/)
 python cli.py analyze --phase 2.5 --provider bedrock --output result.json https://github.com/owner/repo
 
 # Show analysis results
-python cli.py show result.json
+python cli.py show analysis-results/result.json
 
 # Estimate costs before analysis
 python cost_estimator.py https://github.com/owner/repo

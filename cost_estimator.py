@@ -213,10 +213,15 @@ def main():
         }
     }
     
-    with open('react_cost_analysis.json', 'w') as f:
+    # Save to tests/data directory
+    import os
+    os.makedirs('tests/data', exist_ok=True)
+    output_file = 'tests/data/react_cost_analysis.json'
+    
+    with open(output_file, 'w') as f:
         json.dump(output_data, f, indent=2)
     
-    print(f"\n✅ Detailed analysis saved to: react_cost_analysis.json")
+    print(f"\n✅ Detailed analysis saved to: {output_file}")
 
 if __name__ == "__main__":
     main()

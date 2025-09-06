@@ -21,6 +21,18 @@ llm:
     temperature: 0.1
     aws_profile: "bedrock-dev"
 
+# Output directory configuration
+output:
+  # Default directory for analysis results
+  default_dir: "analysis-results"  # Dedicated folder for all analyses
+  
+  # Directory for test data and examples
+  test_data_dir: "tests/data"
+  
+  # Default filenames
+  manifest: "manifest.json"
+  token_analysis: "token_analysis.json"
+
 analysis:
   file_extensions: [".py", ".js", ".java", ".go", ".rb", ".php", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".h", ".cs", ".sql", ".yaml", ".yml", ".json", ".xml", ".html", ".css"]
   max_file_size: 1048576  # 1MB

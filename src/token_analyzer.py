@@ -283,10 +283,24 @@ def main():
     github_analyzer = GitHubAnalyzer()
     token_analyzer = TokenAnalyzer(config)
     
-    # Test with existing manifest
-    manifest_path = "patma_phase2.json"
+    # Test with existing manifest (check tests/data first, then root)
+    import os
+    test_manifest_path = "tests/data/patma_phase2.json"
+    root_manifest_path = "patma_phase2.json"
+    
+    manifest_path = test_manifest_path if os.path.exists(test_manifest_path) else root_manifest_path
     
     try:
+        # Load configuration
+        import yaml
+        config_path = "config.yaml"
+        with open(config_path, 'r') as f:
+            config_data = yaml.safe_load(f)
+        
+        output_config = config_data.get('output', {})
+        default_dir = output_config.get('default_dir', '.')
+        default_filename = output_config.get('token_analysis', 'token_analysis.json')
+        
         # Load manifest
         manifest = github_analyzer.load_manifest(manifest_path)
         
@@ -296,8 +310,8 @@ def main():
         # Print summary
         token_analyzer.print_token_summary(repo_stats)
         
-        # Save analysis
-        output_path = "token_analysis.json"
+        # Save analysis to configured directory
+        output_path = os.path.join(default_dir, default_filename)
         token_analyzer.save_token_analysis(file_stats, repo_stats, output_path)
         
         print(f"\n✅ Token analysis complete! Saved to {output_path}")

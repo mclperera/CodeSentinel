@@ -98,8 +98,10 @@ def analyze_codesentinel_files():
         'analysis_results': results
     }
     
-    # Save to file
-    output_file = 'codesentinel_openai_analysis.json'
+    # Save to tests/data directory
+    import os
+    os.makedirs('tests/data', exist_ok=True)
+    output_file = 'tests/data/codesentinel_openai_analysis.json'
     with open(output_file, 'w') as f:
         json.dump(sample_manifest, f, indent=2)
     

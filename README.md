@@ -39,6 +39,7 @@ CodeSentinel/
 ├── docs/             # Complete documentation
 ├── tests/            # Tests and test data
 ├── examples/         # Demo scripts
+├── analysis-results/ # Generated analysis outputs
 ├── cli.py           # Command-line interface
 └── config.yaml      # Configuration
 
