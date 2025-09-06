@@ -324,12 +324,12 @@ Provide only the JSON response, no additional text."""
                     manifest_file.purpose = llm_response.purpose
                     manifest_file.confidence_score = llm_response.confidence
                     # Store additional LLM metadata
-                    if not hasattr(manifest_file, 'llm_metadata'):
-                        manifest_file.__dict__['llm_metadata'] = {}
-                    manifest_file.__dict__['llm_metadata'] = {
+                    manifest_file.llm_metadata = {
                         'category': llm_response.category,
                         'security_relevance': llm_response.security_relevance,
-                        'reasoning': llm_response.reasoning
+                        'reasoning': llm_response.reasoning,
+                        'provider': 'bedrock',  # Since this is the original Bedrock-only analyzer
+                        'model': 'claude-3-sonnet'  # Default model for Phase 2
                     }
                     break
         

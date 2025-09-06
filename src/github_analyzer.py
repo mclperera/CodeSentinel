@@ -38,10 +38,13 @@ class FileInfo:
     confidence_score: Optional[float] = None
     vulnerabilities: List[Dict] = None
     risk_score: Optional[float] = None
+    llm_metadata: Optional[Dict] = None
     
     def __post_init__(self):
         if self.vulnerabilities is None:
             self.vulnerabilities = []
+        if self.llm_metadata is None:
+            self.llm_metadata = {}
 
 
 @dataclass

@@ -456,9 +456,7 @@ class MultiProviderLLMAnalyzer:
                     manifest_file.purpose = llm_response.purpose
                     manifest_file.confidence_score = llm_response.confidence
                     # Store additional LLM metadata
-                    if not hasattr(manifest_file, 'llm_metadata'):
-                        manifest_file.__dict__['llm_metadata'] = {}
-                    manifest_file.__dict__['llm_metadata'] = {
+                    manifest_file.llm_metadata = {
                         'category': llm_response.category,
                         'security_relevance': llm_response.security_relevance,
                         'reasoning': llm_response.reasoning,

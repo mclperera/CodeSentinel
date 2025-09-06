@@ -102,8 +102,8 @@ def analyze(repository_url, output, config, phase, aws_profile, provider):
         click.echo(f"📝 Commit SHA: {manifest.repository.commit_sha}")
         click.echo(f"📁 Files analyzed: {len(manifest.files)}")
         
-        if phase == '2':
-            # Show LLM analysis summary
+        if phase in ['2', '2.5']:
+            # Show LLM analysis summary for both Phase 2 and 2.5
             categorized_files = {}
             analyzed_files = 0
             
@@ -114,7 +114,8 @@ def analyze(repository_url, output, config, phase, aws_profile, provider):
                     category = llm_metadata.get('category', 'other')
                     categorized_files[category] = categorized_files.get(category, 0) + 1
             
-            click.echo(f"\n🧠 LLM Analysis Summary:")
+            provider_display = provider_name.upper() if phase == '2.5' else 'BEDROCK'
+            click.echo(f"\n🧠 LLM Analysis Summary ({provider_display}):")
             click.echo(f"📊 Files analyzed: {analyzed_files}/{len(manifest.files)}")
             
             if categorized_files:
