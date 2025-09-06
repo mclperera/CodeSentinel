@@ -1,46 +1,146 @@
-# CodeSentinel
+# CodeSentinel Documentation
 
-🛡️ **Automated GitHub repository risk analysis using AI-powered insights**
+🛡️ **Complete documentation for the GitHub Repository Risk Analysis tool**
 
-CodeSentinel is an intelligent repository analysis tool that combines GitHub API integration with AWS Bedrock LLM capabilities to provide comprehensive code understanding and risk assessment.
+## � Table of Contents
 
-## Quick Start
+### 🎯 Getting Started
+- [Main Project README](../README.md) - Quick start and overview
+- [Installation & Setup](technical/TIKTOKEN_COST_EXPLANATION.md) - Detailed setup instructions
+- [Examples & Demos](../examples/) - Working examples and demo scripts
 
+### 🏗️ Design & Architecture
+- [Product Requirements Document](design/github_analysis_prd.md) - Complete PRD with objectives and technical requirements
+- Architecture Overview *(Coming Soon)* - System design and component interactions
+
+### 📊 Development Progress
+- [Phase 1 Summary](phase-summaries/PHASE1_SUMMARY.md) - GitHub Integration & Manifest Generation
+- [Phase 1.5 Summary](phase-summaries/PHASE1_5_SUMMARY.md) - Enhanced file processing and categorization
+- [Phase 2 Summary](phase-summaries/PHASE2_SUMMARY.md) - LLM-powered analysis implementation
+- [Phase 2.5 Summary](phase-summaries/PHASE25_SUMMARY.md) - Multi-provider support and optimization
+- [Phase 2.5 Complete](phase-summaries/PHASE25_COMPLETE.md) - Final implementation details
+
+### 🔬 Analysis & Research
+- [Large Repository Analysis](analysis-results/LARGE_REPO_ANALYSIS.md) - Cost analysis for React repository
+- [OpenAI Analysis Review](analysis-results/OPENAI_ANALYSIS_REVIEW.md) - OpenAI integration testing results
+- [Poetry Analysis Results](analysis-results/OPENAI_POETRY_ANALYSIS_RESULTS.md) - Python Poetry project analysis
+
+### 🔧 Technical Documentation
+- [Tiktoken Cost Calculation](technical/TIKTOKEN_COST_EXPLANATION.md) - How token counting and cost estimation works
+
+### 💡 Examples & Demos
+Located in [`../examples/`](../examples/):
+- `demo_phase25.py` - Complete Phase 2.5 demonstration
+- `quick_openai_demo.py` - Quick OpenAI integration demo
+- `tiktoken_demo.py` - Token counting demonstration
+- `show_real_analysis.py` - Display analysis results
+
+### 🧪 Tests & Test Data
+Located in [`../tests/`](../tests/):
+- `tests/` - Test files and integration tests
+- `tests/data/` - Test manifests and sample data files
+
+## 🚀 Quick Reference
+
+### Core Commands
+```bash
+# Analyze a repository with OpenAI
+python cli.py analyze --phase 2.5 --provider openai --output result.json https://github.com/owner/repo
+
+# Analyze with AWS Bedrock
+python cli.py analyze --phase 2.5 --provider bedrock --output result.json https://github.com/owner/repo
+
+# Show analysis results
+python cli.py show result.json
+
+# Estimate costs before analysis
+python cost_estimator.py https://github.com/owner/repo
+```
+
+### Project Components
+
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| **CLI Interface** | Main command-line tool | `cli.py` |
+| **GitHub Analyzer** | Repository discovery and file analysis | `src/github_analyzer.py` |
+| **LLM Analyzer** | AI-powered code understanding | `src/llm_analyzer.py` |
+| **Multi-LLM Analyzer** | Multi-provider LLM support | `src/multi_llm_analyzer.py` |
+| **Token Analyzer** | Cost estimation and token counting | `src/token_analyzer.py` |
+| **Cost Estimator** | Pre-analysis cost calculation | `cost_estimator.py` |
+
+## 📈 Development Roadmap
+
+### ✅ Completed Phases
+- **Phase 1**: GitHub API integration and file manifest generation
+- **Phase 2**: AWS Bedrock LLM integration for code analysis
+- **Phase 2.5**: Multi-provider support (OpenAI + Bedrock) with cost optimization
+
+### 🚧 In Progress
+- **Phase 3**: CodeQL vulnerability integration
+- Enhanced error handling and retry mechanisms
+- Performance optimizations for large repositories
+
+### 🔮 Future Plans
+- Web dashboard for analysis results
+- GitHub Actions integration
+- Additional LLM provider support
+- Real-time monitoring and alerting
+
+## 🤝 Contributing
+
+1. Review the [PRD](design/github_analysis_prd.md) to understand project objectives
+2. Check [phase summaries](phase-summaries/) for current development status
+3. Look at [examples](../examples/) to understand usage patterns
+4. Run tests in [`../tests/`](../tests/) before submitting changes
+
+## 📞 Support
+
+- Check [technical documentation](technical/) for implementation details
+- Review [analysis results](analysis-results/) for performance benchmarks
+- Examine [test data](../tests/data/) for expected output formats
+
+## ✨ Features
+
+### Phase 1: GitHub Integration ✅
+- **Repository Discovery**: Automatic default branch detection and metadata extraction
+- **File Inventory**: Comprehensive file analysis with support for 20+ file types
+- **Manifest Generation**: Structured JSON output with complete repository metadata
+
+### Phase 2: LLM-Powered Analysis ✅
+- **AI Code Understanding**: Purpose identification using Claude-3.5-Sonnet
+- **Smart Categorization**: Automatic classification (authentication, API, data-processing, etc.)
+- **Security Assessment**: AI-driven security relevance scoring
+- **Confidence Metrics**: Reliability scoring for analysis results
+
+### Phase 3: Vulnerability Integration 🚧
+- **CodeQL Integration**: GitHub Code Scanning API connectivity
+- **SARIF Parsing**: Vulnerability data processing and mapping
+- **Risk Scoring**: Weighted algorithm for comprehensive risk assessment
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.9+
+- GitHub Personal Access Token
+- AWS Account with Bedrock access
+- AWS CLI configured with SSO profile
+
+### Installation
 ```bash
 git clone https://github.com/mclperera/CodeSentinel
 cd CodeSentinel
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
 
-# Configure your GitHub token and AWS credentials
+### Configuration
+1. Create `.env` file with your GitHub token:
+```bash
 echo "your_github_token_here" > .env
-
-# Analyze a repository
-python cli.py analyze --phase 2.5 --provider openai https://github.com/owner/repo
 ```
 
-## Documentation
-
-📚 **[Complete Documentation](docs/README.md)** - Detailed guides, architecture, and examples
-
-### Quick Links
-- [Design Documents](docs/design/) - PRD and architecture decisions
-- [Phase Development](docs/phase-summaries/) - Development progress and milestones  
-- [Analysis Results](docs/analysis-results/) - Research findings and cost analysis
-- [Technical Guides](docs/technical/) - Implementation details and explanations
-- [Examples](examples/) - Demo scripts and usage examples
-
-## Project Structure
-
-```
-CodeSentinel/
-├── src/              # Core source code
-├── docs/             # Complete documentation
-├── tests/            # Tests and test data
-├── examples/         # Demo scripts
-├── cli.py           # Command-line interface
-└── config.yaml      # Configuration
+2. Configure AWS SSO profile named `bedrock-dev` or update `config.yaml`
 
 ### Usage
 
