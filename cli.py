@@ -66,9 +66,36 @@ def analyze(repository_url, output, config, phase, aws_profile, provider, scan_v
         # Initialize GitHub analyzer
         analyzer = GitHubAnalyzer(config_path=config)
         
-        # Generate basic manifest (Phase 1)
-        click.echo("📋 Generating base manifest...")
-        manifest = analyzer.generate_manifest(repository_url)
+        # Check if manifest file already exists for sequential enhancement
+        if os.path.exists(output) and phase in ['1.5', '2', '2.5', '3', '4']:
+            click.echo(f"📋 Loading existing manifest from {output} for Phase {phase} enhancement...")
+            try:
+                manifest = analyzer.load_manifest(output)
+                click.echo(f"✅ Loaded existing manifest with {len(manifest.files)} files")
+                
+                # Verify this is the same repository
+                if manifest.repository.url != repository_url:
+                    click.echo(f"⚠️  Warning: Existing manifest is for different repository!")
+                    click.echo(f"   Existing: {manifest.repository.url}")
+                    click.echo(f"   Requested: {repository_url}")
+                    overwrite = click.confirm("Do you want to overwrite with new repository analysis?", default=False)
+                    if not overwrite:
+                        click.echo("❌ Analysis cancelled. Use different output file or confirm overwrite.")
+                        return
+                    # Generate fresh manifest if user chooses to overwrite
+                    click.echo("📋 Generating fresh manifest...")
+                    manifest = analyzer.generate_manifest(repository_url)
+                else:
+                    click.echo(f"✅ Repository matches: {repository_url}")
+                    
+            except Exception as e:
+                click.echo(f"⚠️  Could not load existing manifest: {e}")
+                click.echo("📋 Generating fresh manifest...")
+                manifest = analyzer.generate_manifest(repository_url)
+        else:
+            # Generate basic manifest (Phase 1 or no existing file)
+            click.echo("📋 Generating base manifest...")
+            manifest = analyzer.generate_manifest(repository_url)
         
         if phase == '1.5':
             # Token analysis (Phase 1.5)
