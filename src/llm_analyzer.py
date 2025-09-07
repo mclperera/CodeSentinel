@@ -11,8 +11,13 @@ from dataclasses import dataclass
 import boto3
 from botocore.exceptions import ClientError
 import os
+import sys
 
-from github_analyzer import FileInfo, Manifest
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.github_analyzer import FileInfo, Manifest
+from prompts.analysis_prompts import create_bedrock_file_analysis_prompt
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -96,42 +101,8 @@ class LLMAnalyzer:
             raise
     
     def _create_analysis_prompt(self, file_path: str, file_content: str, file_extension: str) -> str:
-        """Create analysis prompt for file purpose identification"""
-        
-        prompt = f"""Analyze this code file and identify its primary purpose. Consider:
-- Main functionality and business logic
-- Security implications
-- Data handling patterns
-- External dependencies
-- Framework/library usage patterns
-- Architectural role in the application
-
-File: {file_path}
-Extension: {file_extension}
-Code Content:
-```
-{file_content}
-```
-
-Respond with a JSON object containing:
-- "purpose": A brief, clear description of the file's main purpose (max 100 words)
-- "category": One of [authentication, data-processing, api, frontend, config, test, build, documentation, other]
-- "confidence": A confidence score from 0.0 to 1.0
-- "security_relevance": One of [high, medium, low] based on security implications
-- "reasoning": Brief explanation of the categorization (max 50 words)
-
-Example response:
-{{
-  "purpose": "User authentication and session management module",
-  "category": "authentication",
-  "confidence": 0.95,
-  "security_relevance": "high",
-  "reasoning": "Handles user credentials, session tokens, and access control"
-}}
-
-Provide only the JSON response, no additional text."""
-        
-        return prompt
+        """Create analysis prompt for file purpose identification using centralized prompts"""
+        return create_bedrock_file_analysis_prompt(file_path, file_content, file_extension)
     
     def _call_bedrock_llm(self, prompt: str, max_retries: int = 3) -> Dict:
         """Call Bedrock LLM with error handling and retries"""

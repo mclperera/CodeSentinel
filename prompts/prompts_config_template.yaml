@@ -1,0 +1,97 @@
+# Prompts Configuration Template
+# This shows how you could extend the prompts system with configuration-driven customization
+
+prompts:
+  # Version tracking for prompts
+  version: "1.0"
+  
+  # Global prompt settings
+  global:
+    max_file_size: 1048576  # 1MB
+    max_prompt_tokens: 4000
+    truncate_threshold: 50000
+    
+  # Analysis prompt configuration
+  analysis:
+    # Categories that can be returned by analysis
+    categories:
+      - authentication
+      - data-processing
+      - api
+      - frontend
+      - config
+      - test
+      - build
+      - documentation
+      - other
+    
+    # Security relevance levels
+    security_levels:
+      - high
+      - medium
+      - low
+    
+    # Response constraints
+    max_purpose_length: 100
+    max_reasoning_length: 50
+    
+    # Provider-specific settings
+    providers:
+      openai:
+        use_system_prompt: true
+        response_format: "json_object"
+        include_examples: true
+        
+      bedrock:
+        explicit_json_instruction: true
+        include_examples: true
+        add_no_extra_text_instruction: true
+  
+  # Custom domain-specific instructions
+  domains:
+    security:
+      additional_instructions: |
+        Pay special attention to:
+        - Authentication and authorization mechanisms
+        - Input validation and sanitization
+        - Encryption and data protection
+        - Potential security vulnerabilities
+        - Access control implementations
+        
+    performance:
+      additional_instructions: |
+        Focus on:
+        - Algorithm complexity and efficiency
+        - Resource usage patterns
+        - Potential bottlenecks
+        - Optimization opportunities
+        - Memory management
+        
+    architecture:
+      additional_instructions: |
+        Consider:
+        - Design patterns and architectural principles
+        - Component relationships and dependencies
+        - System integration points
+        - Scalability considerations
+        - Maintainability aspects
+
+  # Template customization
+  templates:
+    # Allow custom prompt templates for different use cases
+    minimal:
+      include_examples: false
+      shortened_instructions: true
+      
+    detailed:
+      include_context_analysis: true
+      include_dependencies_analysis: true
+      request_suggestions: true
+      
+    security_focused:
+      domain: security
+      extra_categories:
+        - crypto
+        - auth-flow
+        - input-validation
+        - access-control

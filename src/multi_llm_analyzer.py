@@ -7,9 +7,13 @@ import json
 import logging
 import time
 import os
+import sys
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # OpenAI imports
 import openai
@@ -20,6 +24,8 @@ import boto3
 from botocore.exceptions import ClientError
 
 from src.github_analyzer import FileInfo, Manifest
+from prompts.system_prompts import OPENAI_SYSTEM_PROMPT
+from prompts.analysis_prompts import create_file_analysis_prompt, create_bedrock_file_analysis_prompt
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -98,7 +104,7 @@ class OpenAIProvider(LLMProvider):
     def analyze_file(self, file_path: str, file_content: str, file_extension: str) -> LLMResponse:
         """Analyze file using OpenAI GPT"""
         
-        prompt = self._create_analysis_prompt(file_path, file_content, file_extension)
+        prompt = create_file_analysis_prompt(file_path, file_content, file_extension)
         
         try:
             response = self.client.chat.completions.create(
@@ -106,7 +112,7 @@ class OpenAIProvider(LLMProvider):
                 messages=[
                     {
                         "role": "system", 
-                        "content": "You are a senior software engineer and security analyst. Analyze code files and provide structured insights about their purpose and security implications."
+                        "content": OPENAI_SYSTEM_PROMPT
                     },
                     {"role": "user", "content": prompt}
                 ],
@@ -150,39 +156,7 @@ class OpenAIProvider(LLMProvider):
             model=self.model
         )
     
-    def _create_analysis_prompt(self, file_path: str, file_content: str, file_extension: str) -> str:
-        """Create analysis prompt for OpenAI"""
-        
-        return f"""Analyze this code file and identify its primary purpose. Consider:
-- Main functionality and business logic
-- Security implications
-- Data handling patterns
-- External dependencies
-- Framework/library usage patterns
-- Architectural role in the application
-
-File: {file_path}
-Extension: {file_extension}
-Code Content:
-```
-{file_content}
-```
-
-Respond with a JSON object containing:
-- "purpose": A brief, clear description of the file's main purpose (max 100 words)
-- "category": One of [authentication, data-processing, api, frontend, config, test, build, documentation, other]
-- "confidence": A confidence score from 0.0 to 1.0
-- "security_relevance": One of [high, medium, low] based on security implications
-- "reasoning": Brief explanation of the categorization (max 50 words)
-
-Example response:
-{{
-  "purpose": "User authentication and session management module",
-  "category": "authentication",
-  "confidence": 0.95,
-  "security_relevance": "high",
-  "reasoning": "Handles user credentials, session tokens, and access control"
-}}"""
+    # Remove the old _create_analysis_prompt method since we're using centralized prompts
 
 
 class BedrockProvider(LLMProvider):
@@ -235,7 +209,7 @@ class BedrockProvider(LLMProvider):
     def analyze_file(self, file_path: str, file_content: str, file_extension: str) -> LLMResponse:
         """Analyze file using AWS Bedrock Claude"""
         
-        prompt = self._create_analysis_prompt(file_path, file_content, file_extension)
+        prompt = create_bedrock_file_analysis_prompt(file_path, file_content, file_extension)
         
         payload = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -294,40 +268,7 @@ class BedrockProvider(LLMProvider):
             model=self.model
         )
     
-    def _create_analysis_prompt(self, file_path: str, file_content: str, file_extension: str) -> str:
-        """Create analysis prompt for Bedrock"""
-        return f"""Analyze this code file and identify its primary purpose. Consider:
-- Main functionality and business logic
-- Security implications
-- Data handling patterns
-- External dependencies
-- Framework/library usage patterns
-- Architectural role in the application
-
-File: {file_path}
-Extension: {file_extension}
-Code Content:
-```
-{file_content}
-```
-
-Respond with a JSON object containing:
-- "purpose": A brief, clear description of the file's main purpose (max 100 words)
-- "category": One of [authentication, data-processing, api, frontend, config, test, build, documentation, other]
-- "confidence": A confidence score from 0.0 to 1.0
-- "security_relevance": One of [high, medium, low] based on security implications
-- "reasoning": Brief explanation of the categorization (max 50 words)
-
-Example response:
-{{
-  "purpose": "User authentication and session management module",
-  "category": "authentication",
-  "confidence": 0.95,
-  "security_relevance": "high",
-  "reasoning": "Handles user credentials, session tokens, and access control"
-}}
-
-Provide only the JSON response, no additional text."""
+    # Remove the old _create_analysis_prompt method since we're using centralized prompts
 
 
 class MultiProviderLLMAnalyzer:

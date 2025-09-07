@@ -43,6 +43,10 @@ Thumbs.db
 logs/
 *.log
 
+# Analysis results - generated files should not be tracked
+analysis-results/*
+!analysis-results/README.md
+
 # AWS credentials
 .aws/
 

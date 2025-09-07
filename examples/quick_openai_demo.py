@@ -5,6 +5,12 @@ Quick OpenAI Analysis Demo - Analyze specific files to show the quality of OpenA
 
 import yaml
 import json
+import sys
+import os
+
+# Add project root to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.github_analyzer import FileInfo, GitHubAnalyzer
 from src.multi_llm_analyzer import MultiProviderLLMAnalyzer
 
