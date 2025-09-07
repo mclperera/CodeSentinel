@@ -44,3 +44,30 @@ risk_scoring:
     purpose: 0.3
     exposure: 0.2
     complexity: 0.1
+
+# Phase 3: Vulnerability Scanning Configuration
+vulnerability_scanning:
+  # Semgrep Configuration
+  semgrep:
+    enabled: true
+    timeout: 120  # seconds
+    exclude_patterns: 
+      - "tests/"
+      - "*.min.js"
+      - "node_modules/"
+      - "__pycache__/"
+      - ".git/"
+    
+  # Bandit Configuration (Python security)
+  bandit:
+    enabled: true
+    confidence_level: "low"    # low, medium, high
+    severity_level: "low"      # low, medium, high  
+    exclude_tests: true
+    
+  # General settings
+  output_format: "json"
+  max_findings_per_file: 100
+  
+  # Tool installation
+  auto_install: true

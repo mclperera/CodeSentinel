@@ -17,7 +17,7 @@ pip install -r requirements.txt
 echo "your_github_token_here" > .env
 
 # Analyze a repository
-python cli.py analyze --phase 2.5 --provider openai https://github.com/owner/repo
+python cli.py analyze --phase 3 --provider openai https://github.com/owner/repo
 ```
 
 ## Documentation
@@ -50,9 +50,19 @@ CodeSentinel/
 python cli.py analyze https://github.com/owner/repo --phase 1
 ```
 
-#### AI-Enhanced Analysis (Phase 2)
+#### AI-Enhanced Analysis (Phase 2.5)
 ```bash
-python cli.py analyze https://github.com/owner/repo --phase 2
+python cli.py analyze https://github.com/owner/repo --phase 2.5 --provider openai
+```
+
+#### Vulnerability Scanning (Phase 3)
+```bash
+python cli.py analyze https://github.com/owner/repo --phase 3
+```
+
+#### Combined Analysis with Vulnerability Scanning
+```bash
+python cli.py analyze https://github.com/owner/repo --phase 2.5 --scan-vulnerabilities
 ```
 
 #### View Analysis Results
@@ -62,8 +72,9 @@ python cli.py show manifest.json
 
 #### Test Connections
 ```bash
-python cli.py test-connection  # GitHub API
-python cli.py test-llm        # AWS Bedrock
+python cli.py test-connection              # GitHub API
+python cli.py test-llm                     # LLM providers  
+python cli.py test-vulnerability-scanner   # Security tools
 ```
 
 ## 📊 Supported File Types
@@ -97,6 +108,15 @@ risk_scoring:
     purpose: 0.3
     exposure: 0.2
     complexity: 0.1
+
+# Phase 3: Vulnerability scanning
+vulnerability_scanning:
+  semgrep:
+    enabled: true
+    timeout: 120
+  bandit:
+    enabled: true
+    confidence_level: "low"
 ```
 
 ## 📋 Manifest Structure
@@ -210,24 +230,28 @@ The LLM analyzer classifies files into the following categories:
 
 ## 🔮 Roadmap
 
-### Phase 3: Vulnerability Integration (In Progress)
-- [ ] CodeQL API integration
-- [ ] SARIF parsing capabilities
-- [ ] Vulnerability-to-file mapping
-- [ ] Risk scoring algorithm
+### ✅ Phase 3: Vulnerability Integration (Complete)
+- [x] Semgrep integration for comprehensive security scanning
+- [x] Bandit integration for Python security analysis  
+- [x] Automatic tool installation and management
+- [x] Repository cloning and local analysis
+- [x] Vulnerability-to-file mapping with detailed findings
+- [x] CLI integration with --scan-vulnerabilities flag
 
 ### Phase 4: Risk Assessment (Planned)
-- [ ] Weighted risk calculation
-- [ ] Repository-level risk scoring
-- [ ] Risk categorization and reporting
+- [ ] Weighted risk calculation using vulnerability data
+- [ ] Repository-level risk scoring algorithm
+- [ ] Risk categorization and reporting dashboard
+- [ ] Integration with LLM insights for context-aware scoring
 - [ ] Compliance reporting features
 
 ### Future Enhancements
-- [ ] VS Code extension
-- [ ] Web dashboard
-- [ ] Batch repository processing
+- [ ] Additional security tools (CodeQL, Safety, etc.)
+- [ ] VS Code extension with real-time scanning
+- [ ] Web dashboard for vulnerability management
+- [ ] Batch repository processing for organizations
 - [ ] Custom risk weight configuration
-- [ ] Integration with security tools
+- [ ] Integration with security orchestration platforms
 
 ## 🤝 Contributing
 
@@ -243,22 +267,22 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🆘 Support
 
-- **Documentation**: See PHASE1_SUMMARY.md and PHASE2_SUMMARY.md
+- **Documentation**: See phase-summaries/ for detailed development progress
 - **Issues**: Report bugs and feature requests via GitHub Issues
 - **Requirements**: See github_analysis_prd.md for detailed specifications
 
 ## 🏆 Achievements
 
 ✅ **Phase 1 Complete**: GitHub integration and manifest generation  
-✅ **Phase 2 Complete**: LLM-powered code analysis with Claude-3.5-Sonnet  
-🚧 **Phase 3 In Progress**: Vulnerability detection and mapping  
+✅ **Phase 2.5 Complete**: Multi-provider LLM analysis (OpenAI + AWS Bedrock)  
+✅ **Phase 3 Complete**: Vulnerability scanning (Semgrep + Bandit)  
 📋 **Phase 4 Planned**: Risk scoring and assessment algorithms
 
 ---
 
-**Built with ❤️ using Python, GitHub APIs, and AWS Bedrock**
+**Built with ❤️ using Python, GitHub APIs, LLM providers, and security tools**
 
-CodeSentinel is an automated workflow that analyzes GitHub repositories to identify code purpose, assess vulnerabilities, and generate risk scores using GitHub APIs, AWS Bedrock LLM, and CodeQL vulnerability data.
+CodeSentinel is an automated workflow that analyzes GitHub repositories to identify code purpose, assess vulnerabilities, and generate risk scores using GitHub APIs, AI-powered analysis, and comprehensive security scanning.
 
 ## Phase 1: GitHub Integration & Manifest Generation ✅
 

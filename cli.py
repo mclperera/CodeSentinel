@@ -27,6 +27,7 @@ def cli():
     Phase 1.5: Token analysis and cost estimation  
     Phase 2: LLM-enhanced code understanding (Bedrock only)
     Phase 2.5: Multi-provider LLM analysis (OpenAI + Bedrock)
+    Phase 3: Vulnerability scanning (Semgrep + Bandit)
     """
     pass
 
@@ -35,14 +36,18 @@ def cli():
 @click.argument('repository_url')
 @click.option('--output', '-o', default=None, help='Output manifest file path (defaults to config default)')
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
-@click.option('--phase', '-p', type=click.Choice(['1', '1.5', '2', '2.5']), default='1', 
-              help='Analysis phase: 1=Basic analysis, 1.5=Token analysis, 2=LLM (Bedrock), 2.5=Multi-provider LLM')
+@click.option('--phase', '-p', type=click.Choice(['1', '1.5', '2', '2.5', '3']), default='1', 
+              help='Analysis phase: 1=Basic analysis, 1.5=Token analysis, 2=LLM (Bedrock), 2.5=Multi-provider LLM, 3=Vulnerability scanning')
 @click.option('--aws-profile', default='bedrock-dev', help='AWS profile for Bedrock access')
 @click.option('--provider', type=click.Choice(['openai', 'bedrock']), default=None, 
               help='LLM provider for Phase 2.5 (defaults to config setting)')
+@click.option('--scan-vulnerabilities', is_flag=True, default=False,
+              help='Run vulnerability scans (Semgrep & Bandit) regardless of phase')
+@click.option('--scanners', default='semgrep,bandit', 
+              help='Comma-separated list of scanners to run (semgrep,bandit)')
 @click.option('--skip-cost-preview', is_flag=True, default=False,
               help='Skip cost preview and consent prompt for automated usage')
-def analyze(repository_url, output, config, phase, aws_profile, provider, skip_cost_preview):
+def analyze(repository_url, output, config, phase, aws_profile, provider, scan_vulnerabilities, scanners, skip_cost_preview):
     """Analyze a GitHub repository and generate a manifest"""
     click.echo(f"🔍 Analyzing repository: {repository_url} (Phase {phase})")
     
@@ -162,6 +167,74 @@ def analyze(repository_url, output, config, phase, aws_profile, provider, skip_c
             manifest = llm_analyzer.enrich_manifest_with_llm_analysis(manifest, analyzer)
             click.echo(f"✨ Multi-provider LLM analysis complete using {provider_name.upper()}!")
         
+        # Phase 3: Vulnerability Scanning
+        if phase == '3' or scan_vulnerabilities:
+            click.echo("\n🔒 Phase 3: Running vulnerability scans...")
+            
+            # Parse scanners option
+            enabled_scanners = [s.strip() for s in scanners.split(',') if s.strip()]
+            click.echo(f"🛡️  Enabled scanners: {', '.join(enabled_scanners)}")
+            
+            # Update config to enable/disable scanners based on user choice
+            vuln_config = config_data.get('vulnerability_scanning', {})
+            if 'semgrep' in enabled_scanners:
+                vuln_config.setdefault('semgrep', {})['enabled'] = True
+            else:
+                vuln_config.setdefault('semgrep', {})['enabled'] = False
+                
+            if 'bandit' in enabled_scanners:
+                vuln_config.setdefault('bandit', {})['enabled'] = True
+            else:
+                vuln_config.setdefault('bandit', {})['enabled'] = False
+            
+            try:
+                from src.vulnerability_scanner import run_vulnerability_analysis
+                
+                click.echo("🔧 Checking and installing security tools...")
+                enhanced_manifest, scan_results = run_vulnerability_analysis(
+                    repository_url, manifest, config_data
+                )
+                
+                manifest = enhanced_manifest
+                
+                # Display vulnerability summary
+                total_vulnerabilities = sum(len(f.vulnerabilities) for f in manifest.files)
+                files_with_vulns = sum(1 for f in manifest.files if f.vulnerabilities)
+                
+                click.echo(f"✅ Vulnerability analysis complete!")
+                click.echo(f"🛡️  Total vulnerabilities found: {total_vulnerabilities}")
+                click.echo(f"📁 Files with vulnerabilities: {files_with_vulns}/{len(manifest.files)}")
+                
+                # Show severity breakdown
+                severity_counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+                tool_counts = {}
+                
+                for file_info in manifest.files:
+                    for vuln in file_info.vulnerabilities:
+                        severity = vuln.get('severity', 'low')
+                        severity_counts[severity] = severity_counts.get(severity, 0) + 1
+                        
+                        tool = vuln.get('tool', 'unknown')
+                        tool_counts[tool] = tool_counts.get(tool, 0) + 1
+                
+                if total_vulnerabilities > 0:
+                    click.echo(f"\n🚨 Severity breakdown:")
+                    for severity, count in severity_counts.items():
+                        if count > 0:
+                            icon = {'critical': '🔴', 'high': '🟠', 'medium': '🟡', 'low': '🟢'}.get(severity, '⚪')
+                            click.echo(f"   {icon} {severity.capitalize()}: {count}")
+                    
+                    click.echo(f"\n🔧 Scanner breakdown:")
+                    for tool, count in tool_counts.items():
+                        click.echo(f"   {tool}: {count} findings")
+                
+            except ImportError as e:
+                click.echo(f"❌ Vulnerability scanner not available: {e}")
+                click.echo("💡 Try: pip install semgrep bandit[toml]")
+            except Exception as e:
+                click.echo(f"❌ Vulnerability scanning failed: {e}")
+                click.echo("⚠️  Continuing with analysis without vulnerability data...")
+        
         # Save manifest
         analyzer.save_manifest(manifest, output)
         
@@ -193,6 +266,15 @@ def analyze(repository_url, output, config, phase, aws_profile, provider, skip_c
                 click.echo("\n📋 Purpose categories:")
                 for category, count in sorted(categorized_files.items()):
                     click.echo(f"  {category}: {count} files")
+        
+        # Show vulnerability summary if Phase 3 was run
+        if phase == '3' or scan_vulnerabilities:
+            total_vulns = sum(len(f.vulnerabilities) for f in manifest.files)
+            if total_vulns > 0:
+                high_risk_files = [f for f in manifest.files if len(f.vulnerabilities) >= 3]
+                click.echo(f"\n🛡️  Vulnerability Summary:")
+                click.echo(f"   Total findings: {total_vulns}")
+                click.echo(f"   High-risk files: {len(high_risk_files)} (3+ vulnerabilities)")
         
         # Show file type breakdown
         extensions = {}
@@ -463,6 +545,44 @@ def test_connection():
     except Exception as e:
         click.echo(f"❌ Connection failed: {str(e)}", err=True)
         sys.exit(1)
+
+
+@cli.command()
+@click.option('--config', '-c', default='config.yaml', help='Configuration file path')
+def test_vulnerability_scanner(config):
+    """Test vulnerability scanning tools installation and functionality"""
+    try:
+        click.echo("🔒 Testing vulnerability scanner...")
+        
+        # Load configuration
+        with open(config, 'r') as f:
+            config_data = yaml.safe_load(f)
+        
+        from src.vulnerability_scanner import SecurityToolManager
+        
+        # Test tool installation
+        tool_manager = SecurityToolManager()
+        click.echo("🔧 Checking security tools...")
+        tool_status = tool_manager.check_and_install_tools()
+        
+        # Display results
+        for tool, status in tool_status.items():
+            status_icon = "✅" if status else "❌"
+            click.echo(f"{status_icon} {tool}: {'Available' if status else 'Failed to install'}")
+        
+        if all(tool_status.values()):
+            click.echo("\n🎉 All vulnerability scanning tools are ready!")
+            click.echo("💡 You can now use --scan-vulnerabilities or --phase 3")
+        else:
+            missing_tools = [tool for tool, status in tool_status.items() if not status]
+            click.echo(f"\n⚠️  Missing tools: {', '.join(missing_tools)}")
+            click.echo("💡 Try running: pip install semgrep bandit[toml]")
+        
+    except ImportError as e:
+        click.echo(f"❌ Vulnerability scanner module not found: {e}")
+        click.echo("💡 Make sure src/vulnerability_scanner.py exists")
+    except Exception as e:
+        click.echo(f"❌ Test failed: {str(e)}")
 
 
 @cli.command()
