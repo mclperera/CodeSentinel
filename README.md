@@ -13,11 +13,14 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Configure your GitHub token and AWS credentials
-echo "your_github_token_here" > .env
+# Configure your tokens
+echo "GITHUB_TOKEN=your_github_token_here" > .env
+echo "OPENAPI_KEY=your_openai_key_here" >> .env
 
-# Analyze a repository
-python cli.py analyze --phase 3 --provider openai https://github.com/owner/repo
+# Sequential analysis workflow (recommended)
+python cli.py analyze https://github.com/owner/repo --phase 1      # Basic structure
+python cli.py analyze https://github.com/owner/repo --phase 2.5    # Add AI insights  
+python cli.py analyze https://github.com/owner/repo --phase 3      # Add vulnerabilities
 ```
 
 ## Documentation
@@ -45,22 +48,35 @@ CodeSentinel/
 
 ### Usage
 
-#### Basic Repository Analysis (Phase 1)
+#### Sequential Analysis Workflow (Recommended)
+
+CodeSentinel uses **progressive enhancement** - each phase builds upon previous data in the same file:
+
+**Step 1: Basic Repository Structure**
 ```bash
 python cli.py analyze https://github.com/owner/repo --phase 1
 ```
 
-#### AI-Enhanced Analysis (Phase 2.5)
+**Step 2: AI-Enhanced Analysis (adds purpose and insights)**
 ```bash
 python cli.py analyze https://github.com/owner/repo --phase 2.5 --provider openai
 ```
 
-#### Vulnerability Scanning (Phase 3)
+**Step 3: Vulnerability Scanning (adds security findings)**
 ```bash
 python cli.py analyze https://github.com/owner/repo --phase 3
 ```
 
-#### Combined Analysis with Vulnerability Scanning
+#### Custom Output File (Sequential Enhancement)
+```bash
+# Use custom filename - each phase enhances the SAME file
+python cli.py analyze https://github.com/pallets/flask --phase 1 --output flask-analysis.json
+python cli.py analyze https://github.com/pallets/flask --phase 2.5 --output flask-analysis.json  
+python cli.py analyze https://github.com/pallets/flask --phase 3 --output flask-analysis.json
+# Result: Single comprehensive file with structure + AI insights + vulnerabilities
+```
+
+#### Combined Analysis
 ```bash
 python cli.py analyze https://github.com/owner/repo --phase 2.5 --scan-vulnerabilities
 ```
