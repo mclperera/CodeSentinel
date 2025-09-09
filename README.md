@@ -4,6 +4,8 @@
 
 CodeSentinel is an intelligent repository analysis tool that combines GitHub API integration with AWS Bedrock LLM capabilities to provide comprehensive code understanding and risk assessment.
 
+> ⚠️ **Educational Project**: This tool is designed for educational purposes and learning. It uses paid APIs (OpenAI, AWS Bedrock) and should be used responsibly. Always review cost estimates before analyzing large repositories. See [Security Policy](SECURITY.md) for important considerations.
+
 ## Quick Start
 
 ```bash
