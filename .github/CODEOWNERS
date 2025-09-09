@@ -1,0 +1,23 @@
+# CodeSentinel Code Owners
+# This file defines who owns which parts of the codebase
+# Code owners are automatically requested for review when someone opens a pull request
+
+# Global ownership - @mclperera owns everything by default
+* @mclperera
+
+# Specific ownership for critical files
+/.github/ @mclperera
+/src/ @mclperera
+/prompts/ @mclperera
+/docs/ @mclperera
+/cli.py @mclperera
+/config.yaml @mclperera
+/requirements.txt @mclperera
+/README.md @mclperera
+/LICENSE @mclperera
+/CONTRIBUTING.md @mclperera
+/SECURITY.md @mclperera
+
+# Future: Add other maintainers as the project grows
+# /docs/ @mclperera @future-maintainer
+# /examples/ @mclperera @future-maintainer
