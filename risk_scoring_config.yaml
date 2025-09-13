@@ -1,0 +1,91 @@
+# Risk Scoring Configuration for CodeSentinel
+# Users can modify these scales to customize risk assessment behavior
+
+# Vulnerability Severity Scores (0-10 scale)
+# Higher scores indicate more severe vulnerabilities
+vulnerability_severity_scores:
+  critical: 10
+  high: 7
+  medium: 4
+  low: 1
+
+# File Category Risk Scores (0-10 scale)  
+# Based on the security impact potential of different file types
+file_category_scores:
+  authentication: 10    # User auth, session management, credentials
+  api: 8               # REST endpoints, API controllers, web services
+  data-processing: 7   # Data handling, business logic, transformations
+  config: 6            # Configuration files, environment settings
+  frontend: 4          # UI components, templates, client-side code
+  build: 3             # Build scripts, deployment configs, CI/CD
+  test: 2              # Unit tests, integration tests, test utilities
+  documentation: 1     # README, docs, comments
+  other: 3             # Default for uncategorized files
+
+# Security Relevance Scores (0-10 scale)
+# Based on LLM assessment of security importance
+security_relevance_scores:
+  high: 10     # Files with high security implications
+  medium: 5    # Files with moderate security implications  
+  low: 2       # Files with minimal security implications
+
+# Risk Score Component Weights (must sum to 1.0)
+# Determines relative importance of each factor in final score
+risk_component_weights:
+  vulnerability_severity: 0.40  # 40% - Severity of actual vulnerabilities found
+  file_category: 0.35          # 35% - Type/category of the file
+  security_relevance: 0.25     # 25% - LLM-assessed security relevance
+
+# Priority Level Thresholds (0-10 scale)
+# Risk scores at or above these thresholds get assigned the corresponding priority
+priority_thresholds:
+  critical: 8.0    # Immediate attention required
+  high: 6.0        # High priority remediation
+  medium: 4.0      # Planned remediation
+  low: 2.0         # Monitor and track
+  # Anything below 2.0 is considered 'INFO'
+
+# SLA Hours by Priority Level
+# Time limits for addressing vulnerabilities at each priority level
+sla_hours:
+  critical: 4      # 4 hours for critical issues
+  high: 24         # 1 day for high priority
+  medium: 72       # 3 days for medium priority  
+  low: 168         # 1 week for low priority
+  info: null       # No SLA for informational findings
+
+# Vulnerability Count Multipliers (optional enhancement)
+# Adjusts risk score based on number of vulnerabilities in a file
+vulnerability_count_settings:
+  enabled: true                    # Enable/disable count-based scoring
+  base_multiplier: 0.1            # Additional multiplier per extra vulnerability
+  max_multiplier: 1.5             # Maximum multiplier cap
+  critical_high_boost: 1.0        # Extra points for multiple critical/high vulns
+
+# Custom Category Patterns (optional)
+# Additional patterns to help categorize files when LLM categorization is uncertain
+category_patterns:
+  authentication:
+    - "auth"
+    - "login" 
+    - "passwd"
+    - "credential"
+    - "session"
+  api:
+    - "api"
+    - "endpoint"
+    - "route" 
+    - "controller"
+    - "service"
+  config:
+    - "config"
+    - "env"
+    - "setting"
+    - ".yaml"
+    - ".yml"
+    - ".json"
+  data-processing:
+    - "model"
+    - "data"
+    - "process"
+    - "transform"

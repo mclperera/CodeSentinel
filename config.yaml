@@ -71,3 +71,17 @@ vulnerability_scanning:
   
   # Tool installation
   auto_install: true
+
+# Risk Scoring Configuration
+risk_scoring:
+  # Path to detailed risk scoring configuration file
+  config_file: "risk_scoring_config.yaml"
+  
+  # Enable/disable risk scoring (for backward compatibility)
+  enabled: true
+  
+  # Quick override weights (detailed config in risk_scoring_config.yaml)
+  component_weights:
+    vulnerability_severity: 0.40
+    file_category: 0.35
+    security_relevance: 0.25

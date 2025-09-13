@@ -39,6 +39,11 @@ class FileInfo:
     vulnerabilities: List[Dict] = None
     risk_score: Optional[float] = None
     llm_metadata: Optional[Dict] = None
+    # New risk assessment fields
+    priority: Optional[str] = None
+    sla_hours: Optional[int] = None
+    vulnerability_score: Optional[float] = None  # Legacy compatibility
+    total_vulnerabilities: Optional[int] = None  # Legacy compatibility
     
     def __post_init__(self):
         if self.vulnerabilities is None:
